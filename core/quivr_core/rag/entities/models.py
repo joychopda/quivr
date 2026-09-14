@@ -1,3 +1,17 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    h = _P(__file__).resolve().parent
+    _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+    _spec = _ilu.spec_from_file_location(n, _cand)
+    _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_m); return _m
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional
@@ -12,8 +26,13 @@ from typing_extensions import TypedDict
 class cited_answer(BaseModel):
     """Answer the user question based only on the given sources, and cite the sources used."""
 
+    _lineaje_payload = ...
+    # LINEAJE: enforce() `_lineaje_payload` at agent->tool post_tool — scan flagged AI_APP_SEC_014 (MCP server must validate and sanitize all input). Mask/block; do not remove without review. site_id='site:sha256:e37c993c1a4baa101ee15514df2422a8128ac3a4fe38393c703e0a12404cc592'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e37c993c1a4baa101ee15514df2422a8128ac3a4fe38393c703e0a12404cc592', phase='post_tool', boundary={'source': 'tool_result', 'sink': 'agent_message'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='tool')
+    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json', variable_name='_lineaje_payload', source_file=__file__, before_line=15)
     answer: str = Field(
-        ...,
+        _lineaje_payload,
         description="The answer to the user question, which is based only on the given sources.",
     )
     citations: list[int] = Field(

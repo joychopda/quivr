@@ -1,3 +1,17 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    h = _P(__file__).resolve().parent
+    _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+    _spec = _ilu.spec_from_file_location(n, _cand)
+    _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_m); return _m
+
 from uuid import uuid4
 
 import pytest
@@ -11,7 +25,12 @@ from quivr_core.rag.utils import (
 
 
 def test_model_supports_function_calling():
-    assert model_supports_function_calling("gpt-4") is True
+    _lineaje_payload = "gpt-4"
+    # LINEAJE: enforce() `_lineaje_payload` at html->user_interface data_egress — scan flagged AI_APP_SEC_006 (Use only LLMs from the organization's approved list.); AI_APP_SEC_028 (Do not use LLMs from the organization's disallowed list). Mask/block; do not remove without review. site_id='site:sha256:2bd11cb3aab6695813618ee40de7ffe0e16b02bcb236be21c97b0f4e2226467c'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2bd11cb3aab6695813618ee40de7ffe0e16b02bcb236be21c97b0f4e2226467c', phase='data_egress', boundary={'source': 'html', 'sink': 'user_interface'}, candidate_policies=[{'policy_id': 'AI_DAT_SEC_012', 'guardrail_id': 'Mask PII on UI', 'policy_version': '2026.08.1'}], fail_mode='BLOCK', source_type='html', destination_type='user_interface')
+    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='text/html')
+    assert model_supports_function_calling(_lineaje_payload) is True
     assert model_supports_function_calling("ollama3") is False
 
 
@@ -45,6 +64,10 @@ def test_parse_chunk_response_nofunc_calling():
     rolling_msg = AIMessageChunk(content="")
     chunk = AIMessageChunk(content="next ")
     for i in range(10):
+        # LINEAJE: enforce() `rolling_msg` at html->user_interface data_egress — scan flagged AI_APP_SEC_029 (Agent must validate, sanitize LLM output including for presence of eval or any dynamic code execution primitive in LLM output.). Mask/block; do not remove without review. site_id='site:sha256:6fc60bcd6f8c53ac0b3dd006c8157a6cf119444229f5898f1dd65942c36cf1a4'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:6fc60bcd6f8c53ac0b3dd006c8157a6cf119444229f5898f1dd65942c36cf1a4', phase='data_egress', boundary={'source': 'html', 'sink': 'user_interface'}, candidate_policies=[{'policy_id': 'AI_DAT_SEC_012', 'guardrail_id': 'Mask PII on UI', 'policy_version': '2026.08.1'}], fail_mode='BLOCK', source_type='html', destination_type='user_interface')
+        rolling_msg = _gr_client.enforce(_gr_site, rolling_msg, content_type='text/html')
         rolling_msg, parsed_chunk, _ = parse_chunk_response(rolling_msg, chunk, False)
         assert rolling_msg.content == "next " * (i + 1)
         assert parsed_chunk == "next "
@@ -68,6 +91,10 @@ def test_parse_chunk_response_func_calling(chunks_stream_answer):
     for chunk in chunks_stream_answer:
         # Extract the AIMessageChunk from the chunk dictionary
         chunk_msg = chunk["answer"]  # Get the AIMessageChunk from the dict
+        # LINEAJE: enforce() `rolling_msg` at agent->tool post_tool — scan flagged AI_APP_SEC_014 (MCP server must validate and sanitize all input). Mask/block; do not remove without review. site_id='site:sha256:315affa546f25897040b2f9a69b569d4d7ede180b08619957ba7fafb5a180c4f'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:315affa546f25897040b2f9a69b569d4d7ede180b08619957ba7fafb5a180c4f', phase='post_tool', boundary={'source': 'tool_result', 'sink': 'agent_message'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='tool')
+        rolling_msg = _gr_client.enforce(_gr_site, rolling_msg, content_type='application/json', variable_name='rolling_msg', source_file=__file__, before_line=71)
         rolling_msg, answer_str, _ = parse_chunk_response(rolling_msg, chunk_msg, True)
         rolling_msgs_history.append(rolling_msg)
         answer_str_history.append(answer_str)

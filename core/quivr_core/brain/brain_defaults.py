@@ -47,7 +47,12 @@ def default_llm() -> LLMEndpoint:
     try:
         logger.debug("Loaded ChatOpenAI as default LLM for brain")
         llm = LLMEndpoint.from_config(
-            LLMEndpointConfig(supplier=DefaultModelSuppliers.OPENAI, model="gpt-4o")
+            LLMEndpointConfig(
+                supplier=DefaultModelSuppliers.OPENAI,
+                model="deepseek-chat",
+                llm_base_url="https://api.deepseek.com/v1",
+                env_variable_name="DEEPSEEK_API_KEY",
+            )
         )
         return llm
 

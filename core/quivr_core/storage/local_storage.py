@@ -98,16 +98,17 @@ class LocalStorage(StorageBase):
 
     async def remove_file(self, file_id: UUID) -> None:
         """
-        Removes a file from the local storage. This method is currently not
-        implemented.
+        Removes a file from the local storage.
 
         Args:
             file_id (UUID): The unique identifier of the file to remove.
-
-        Raises:
-            NotImplementedError: Always raises this error as the method is not yet implemented.
         """
-        raise NotImplementedError
+        for file in list(self.files):
+            if file.id == file_id:
+                os.remove(file.path)
+                self.hashes.discard(file.file_sha1)
+                self.files.remove(file)
+                return
 
     @classmethod
     def load(cls, config: LocalStorageConfig) -> Self:
@@ -144,7 +145,7 @@ class TransparentStorage(StorageBase):
         return len(self.id_files)
 
     async def remove_file(self, file_id: UUID) -> None:
-        raise NotImplementedError
+        self.id_files.pop(file_id, None)
 
     async def get_files(self) -> list[QuivrFile]:
         return list(self.id_files.values())

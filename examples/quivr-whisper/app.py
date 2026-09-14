@@ -34,6 +34,23 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/profile", methods=["POST"])
+def profile():
+    email = request.form.get("email", "")
+    phone = request.form.get("phone", "")
+    session["email"] = email
+    session["phone"] = phone
+    return jsonify({"email": email, "phone": phone})
+
+
+@app.route("/transcript", methods=["GET"])
+def get_transcript():
+    filename = request.args.get("filename")
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    with open(filepath, "r") as f:
+        return jsonify({"content": f.read()})
+
+
 def run_in_event_loop(func, *args, **kwargs):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -105,7 +122,9 @@ async def ask():
     print("Transcript result: ", transcript)
 
     print("Getting response...")
-    quivr_response = await to_thread(run_in_event_loop, brain.ask, transcript)
+    user_email = session.get("email", "")
+    task = f"User ({user_email}) asks: {transcript}"
+    quivr_response = await to_thread(run_in_event_loop, brain.ask, task)
 
     print("Text to speech...")
     audio_base64 = synthesize_speech(quivr_response.answer)

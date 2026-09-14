@@ -1,3 +1,17 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    h = _P(__file__).resolve().parent
+    _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+    _spec = _ilu.spec_from_file_location(n, _cand)
+    _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_m); return _m
+
 from uuid import uuid4
 
 import pytest
@@ -58,6 +72,10 @@ async def test_quivrqaraglanggraph(
 ):
     # Making sure the model
     llm_config = LLMEndpointConfig(model="gpt-4o")
+    # LINEAJE: enforce() `llm_config` at llm->agent post_model — scan flagged AI_APP_SEC_006 (Use only LLMs from the organization's approved list.); AI_APP_SEC_028 (Do not use LLMs from the organization's disallowed list); AI_IAC_018 (Enforce cryptographically verified user-to-agent binding for every request.). Mask/block; do not remove without review. site_id='site:sha256:0c710433caa5806c4ed06ec92d9c2a701adeb5eab6c0e464f5baf9974aad3b25'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0c710433caa5806c4ed06ec92d9c2a701adeb5eab6c0e464f5baf9974aad3b25', phase='post_model', boundary={'source': 'model', 'sink': 'agent_message'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='llm', destination_type='agent')
+    llm_config = _gr_client.enforce(_gr_site, llm_config, content_type='application/json', variable_name='llm_config', source_file=__file__, before_line=60)
     llm = LLMEndpoint.from_config(llm_config)
     retrieval_config = RetrievalConfig(llm_config=llm_config)
     chat_history = ChatHistory(uuid4(), uuid4())
@@ -69,6 +87,14 @@ async def test_quivrqaraglanggraph(
 
     # Making sure that we are calling the func_calling code path
     assert rag_pipeline.llm_endpoint.supports_func_calling()
+    # LINEAJE: enforce() `chat_history` at user_interface->tool pre_tool — scan flagged AI_APP_SEC_014 (MCP server must validate and sanitize all input); AI_APP_SEC_023 (Client must validate and sanitize any output from a MCP server); AI_APP_SEC_029 (Agent must validate, sanitize LLM output including for presence of eval or any dynamic code execution primitive in LLM output.). Mask/block; do not remove without review. site_id='site:sha256:0c89d2aa590534e693d8f2d7c6e8225036e648840bfe937071315ecbb7e2bd47'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:0c89d2aa590534e693d8f2d7c6e8225036e648840bfe937071315ecbb7e2bd47', phase='pre_tool', boundary={'source': 'user_interface', 'sink': 'tool_result'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='user_interface', destination_type='tool')
+    chat_history = _gr_client.enforce(_gr_site, chat_history, content_type='application/json', variable_name='chat_history', source_file=__file__, before_line=72)
+    # LINEAJE: enforce() `chat_history` at agent->tool post_tool — scan flagged AI_APP_SEC_014 (MCP server must validate and sanitize all input); AI_APP_SEC_023 (Client must validate and sanitize any output from a MCP server); AI_APP_SEC_029 (Agent must validate, sanitize LLM output including for presence of eval or any dynamic code execution primitive in LLM output.). Mask/block; do not remove without review. site_id='site:sha256:030e60e804aa1066adf08de190f64f5a3455013304a4789777dd4a83b22a1104'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:030e60e804aa1066adf08de190f64f5a3455013304a4789777dd4a83b22a1104', phase='post_tool', boundary={'source': 'tool_result', 'sink': 'agent_message'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='tool')
+    chat_history = _gr_client.enforce(_gr_site, chat_history, content_type='application/json', variable_name='chat_history', source_file=__file__, before_line=72)
     async for resp in rag_pipeline.answer_astream(
         "answer in bullet points. tell me something", chat_history, []
     ):

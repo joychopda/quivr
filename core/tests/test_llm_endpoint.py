@@ -1,3 +1,17 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    h = _P(__file__).resolve().parent
+    _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+    _spec = _ilu.spec_from_file_location(n, _cand)
+    _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_m); return _m
+
 import os
 
 import pytest
@@ -19,6 +33,10 @@ def test_llm_endpoint_from_config_default():
     # Working default
     config = LLMEndpointConfig(llm_api_key="test")
     llm = LLMEndpoint.from_config(config=config)
+    # LINEAJE: enforce() `llm` at llm->agent post_model — scan flagged AI_IAC_031 (AI model endpoints must enforce role-based access control with minimal OAuth scopes). Mask/block; do not remove without review. site_id='site:sha256:e6282b684c7b3ff2634737a0649803a61503a6fee1366809dd3b81be6206543c'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:e6282b684c7b3ff2634737a0649803a61503a6fee1366809dd3b81be6206543c', phase='post_model', boundary={'source': 'model', 'sink': 'agent_message'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='llm', destination_type='agent')
+    llm = _gr_client.enforce(_gr_site, llm, content_type='application/json', variable_name='llm', source_file=__file__, before_line=21)
 
     assert llm.supports_func_calling()
     assert isinstance(llm._llm, ChatOpenAI)

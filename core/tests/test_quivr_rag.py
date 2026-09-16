@@ -1,3 +1,17 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    h = _P(__file__).resolve().parent
+    _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+    _spec = _ilu.spec_from_file_location(n, _cand)
+    _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_m); return _m
+
 from uuid import uuid4
 
 import pytest
@@ -48,6 +62,10 @@ def mock_chain_qa_stream(monkeypatch, chunks_stream_answer):
         self.final_nodes = ["generate"]
         return MockQAChain()
 
+    # LINEAJE: enforce() `QuivrQARAGLangGraph` at html->user_interface data_egress — scan flagged AI_IAC_SEC_020 (Restrict AI agents to an explicit tool allow list.). Mask/block; do not remove without review. site_id='site:sha256:711fb4d386f62a809a826e5f0c3c300bbf1721ee64da8dcfe89844e0cc68aec0'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:711fb4d386f62a809a826e5f0c3c300bbf1721ee64da8dcfe89844e0cc68aec0', phase='data_egress', boundary={'source': 'html', 'sink': 'user_interface'}, candidate_policies=[{'policy_id': 'AI_DAT_SEC_012', 'guardrail_id': 'Mask PII on UI', 'policy_version': '2026.08.1'}], fail_mode='BLOCK', source_type='html', destination_type='user_interface')
+    QuivrQARAGLangGraph = _gr_client.enforce(_gr_site, QuivrQARAGLangGraph, content_type='text/html')
     monkeypatch.setattr(QuivrQARAGLangGraph, "build_chain", mock_qa_chain)
 
 
@@ -58,6 +76,10 @@ async def test_quivrqaraglanggraph(
 ):
     # Making sure the model
     llm_config = LLMEndpointConfig(model="gpt-4o")
+    # LINEAJE: enforce() `llm_config` at file_storage->agent data_egress — scan flagged AI_APP_SEC_006 (Use only LLMs from the organization's approved list.). Mask/block; do not remove without review. site_id='site:sha256:757e60afdfc46e74f1a76852dd252ee5652e148fd7acf1a96744f1c0f8c0aefc'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:757e60afdfc46e74f1a76852dd252ee5652e148fd7acf1a96744f1c0f8c0aefc', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='file_storage', destination_type='agent')
+    llm_config = _gr_client.enforce(_gr_site, llm_config, content_type='application/json')
     llm = LLMEndpoint.from_config(llm_config)
     retrieval_config = RetrievalConfig(llm_config=llm_config)
     chat_history = ChatHistory(uuid4(), uuid4())
@@ -69,6 +91,14 @@ async def test_quivrqaraglanggraph(
 
     # Making sure that we are calling the func_calling code path
     assert rag_pipeline.llm_endpoint.supports_func_calling()
+    # LINEAJE: enforce() `chat_history` at agent->tool post_tool — scan flagged AI_APP_SEC_014 (MCP server must validate and sanitize all input); AI_APP_SEC_023 (Client must validate and sanitize any output from a MCP server); AI_APP_SEC_029 (Agent must validate, sanitize LLM output including for presence of eval or any dynamic code execution primitive in LLM output.). Mask/block; do not remove without review. site_id='site:sha256:200f1017db0b43835d69e0ee868a566dcbbfbec3afb084b647e6f7e1311fc0d9'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:200f1017db0b43835d69e0ee868a566dcbbfbec3afb084b647e6f7e1311fc0d9', phase='post_tool', boundary={'source': 'tool_result', 'sink': 'agent_message'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='agent', destination_type='tool')
+    chat_history = _gr_client.enforce(_gr_site, chat_history, content_type='application/json', variable_name='chat_history', source_file=__file__, before_line=72)
+    # LINEAJE: enforce() `chat_history` at html->user_interface data_egress — scan flagged AI_APP_SEC_014 (MCP server must validate and sanitize all input); AI_APP_SEC_023 (Client must validate and sanitize any output from a MCP server); AI_APP_SEC_029 (Agent must validate, sanitize LLM output including for presence of eval or any dynamic code execution primitive in LLM output.). Mask/block; do not remove without review. site_id='site:sha256:8201d645dbb19774828751fb6b00309e33280a794bd05546c275c56913569738'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8201d645dbb19774828751fb6b00309e33280a794bd05546c275c56913569738', phase='data_egress', boundary={'source': 'html', 'sink': 'user_interface'}, candidate_policies=[{'policy_id': 'AI_DAT_SEC_012', 'guardrail_id': 'Mask PII on UI', 'policy_version': '2026.08.1'}], fail_mode='BLOCK', source_type='html', destination_type='user_interface')
+    chat_history = _gr_client.enforce(_gr_site, chat_history, content_type='text/html')
     async for resp in rag_pipeline.answer_astream(
         "answer in bullet points. tell me something", chat_history, []
     ):

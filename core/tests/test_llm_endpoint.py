@@ -1,3 +1,17 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    h = _P(__file__).resolve().parent
+    _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+    _spec = _ilu.spec_from_file_location(n, _cand)
+    _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_m); return _m
+
 import os
 
 import pytest
@@ -18,7 +32,15 @@ def test_llm_endpoint_from_config_default():
 
     # Working default
     config = LLMEndpointConfig(llm_api_key="test")
+    # LINEAJE: enforce() `config` at file_storage->agent data_egress — scan flagged AI_APP_SEC_006 (Use only LLMs from the organization's approved list.); AI_IAC_018 (Enforce cryptographically verified user-to-agent binding for every request.). Mask/block; do not remove without review. site_id='site:sha256:246a874a3c4030b1f8114c3ea89b16c7ea5bf74a366ea1a4a8610815bcd52ce8'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:246a874a3c4030b1f8114c3ea89b16c7ea5bf74a366ea1a4a8610815bcd52ce8', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='file_storage', destination_type='agent')
+    config = _gr_client.enforce(_gr_site, config, content_type='application/json')
     llm = LLMEndpoint.from_config(config=config)
+    # LINEAJE: enforce() `llm` at llm->agent post_model — scan flagged AI_APP_SEC_039 (Sanitize and validate all input to the AI Model.); AI_IAC_031 (AI model endpoints must enforce role-based access control with minimal OAuth scopes); AI_IAC_SEC_020 (Restrict AI agents to an explicit tool allow list.). Mask/block; do not remove without review. site_id='site:sha256:ccc6ec98fe740cda1e09f74433c13fd58b3a1fca30f0ec55a49e1ea6382cfaca'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:ccc6ec98fe740cda1e09f74433c13fd58b3a1fca30f0ec55a49e1ea6382cfaca', phase='post_model', boundary={'source': 'model', 'sink': 'agent_message'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='llm', destination_type='agent')
+    llm = _gr_client.enforce(_gr_site, llm, content_type='application/json', variable_name='llm', source_file=__file__, before_line=21)
 
     assert llm.supports_func_calling()
     assert isinstance(llm._llm, ChatOpenAI)
@@ -32,6 +54,10 @@ def test_llm_endpoint_from_config():
     config = LLMEndpointConfig(
         model="llama2", llm_api_key="test", llm_base_url="http://localhost:8441"
     )
+    # LINEAJE: enforce() `config` at html->user_interface data_egress — scan flagged AI_APP_SEC_059 (Do not allow prompts that can execute malicious commands at runtime.). Mask/block; do not remove without review. site_id='site:sha256:fe1bc6fcd7ec3467fb0f3fa8417e95f8dca8d14670e892471c47628312e923b9'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:fe1bc6fcd7ec3467fb0f3fa8417e95f8dca8d14670e892471c47628312e923b9', phase='data_egress', boundary={'source': 'html', 'sink': 'user_interface'}, candidate_policies=[{'policy_id': 'AI_DAT_SEC_012', 'guardrail_id': 'Mask PII on UI', 'policy_version': '2026.08.1'}], fail_mode='BLOCK', source_type='html', destination_type='user_interface')
+    config = _gr_client.enforce(_gr_site, config, content_type='text/html')
     llm = LLMEndpoint.from_config(config)
 
     assert not llm.supports_func_calling()
@@ -41,6 +67,10 @@ def test_llm_endpoint_from_config():
 
 def test_llm_endpoint_constructor():
     llm_endpoint = FakeListChatModel(responses=[])
+    # LINEAJE: enforce() `llm_endpoint` at file_storage->agent data_egress — scan flagged AI_APP_SEC_029 (Agent must validate, sanitize LLM output including for presence of eval or any dynamic code execution primitive in LLM output.). Mask/block; do not remove without review. site_id='site:sha256:3cd50e95834268a017ed66d8cb17c96f3708a70762f6e1d6387eb52a58fded22'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:3cd50e95834268a017ed66d8cb17c96f3708a70762f6e1d6387eb52a58fded22', phase='data_egress', boundary={'source': 'agent_message', 'sink': 'external_endpoint'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='file_storage', destination_type='agent')
+    llm_endpoint = _gr_client.enforce(_gr_site, llm_endpoint, content_type='application/json')
     llm_endpoint = LLMEndpoint(
         llm=llm_endpoint, llm_config=LLMEndpointConfig(model="test")
     )

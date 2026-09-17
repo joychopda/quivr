@@ -1,3 +1,17 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    h = _P(__file__).resolve().parent
+    _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+    _spec = _ilu.spec_from_file_location(n, _cand)
+    _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_m); return _m
+
 from uuid import uuid4
 
 import pytest
@@ -58,6 +72,10 @@ async def test_quivrqaraglanggraph(
 ):
     # Making sure the model
     llm_config = LLMEndpointConfig(model="gpt-4o")
+    # LINEAJE: enforce() `llm_config` at llm->agent post_model — scan flagged AI_APP_SEC_006 (Use only LLMs from the organization's approved list.); AI_APP_SEC_028 (Do not use LLMs from the organization's disallowed list); AI_IAC_024 (General purpose AI model integrations must reference a model card or technical documentation). Mask/block; do not remove without review. site_id='site:sha256:7b9726f0765242a7dc4c633fdb61d9d575bf5fabca83212d19f84a553badc9a6'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:7b9726f0765242a7dc4c633fdb61d9d575bf5fabca83212d19f84a553badc9a6', phase='post_model', boundary={'source': 'model', 'sink': 'agent_message'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='llm', destination_type='agent')
+    llm_config = _gr_client.enforce(_gr_site, llm_config, content_type='application/json', variable_name='llm_config', source_file=__file__, before_line=60)
     llm = LLMEndpoint.from_config(llm_config)
     retrieval_config = RetrievalConfig(llm_config=llm_config)
     chat_history = ChatHistory(uuid4(), uuid4())
@@ -69,6 +87,10 @@ async def test_quivrqaraglanggraph(
 
     # Making sure that we are calling the func_calling code path
     assert rag_pipeline.llm_endpoint.supports_func_calling()
+    # LINEAJE: enforce() `chat_history` at user_interface->agent post_agent_receive — scan flagged AI_APP_SEC_023 (Client must validate and sanitize any output from a MCP server); AI_APP_SEC_059 (Do not allow prompts that can execute malicious commands at runtime.); AI_IAC_014 (A user must authenticate before accessing the AI Agent.). Mask/block; do not remove without review. site_id='site:sha256:c62039ed146acc5f4aeec634ded07eb3c5041c104e7bbc200b9fd7ff0cbfb770'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:c62039ed146acc5f4aeec634ded07eb3c5041c104e7bbc200b9fd7ff0cbfb770', phase='post_agent_receive', boundary={'source': 'user_interface', 'sink': 'agent_message'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='user_interface', destination_type='agent')
+    chat_history = _gr_client.enforce(_gr_site, chat_history, content_type='application/json', variable_name='chat_history', source_file=__file__, before_line=72)
     async for resp in rag_pipeline.answer_astream(
         "answer in bullet points. tell me something", chat_history, []
     ):

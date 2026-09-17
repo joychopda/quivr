@@ -1,4 +1,5 @@
 import tempfile
+import uuid
 
 import chainlit as cl
 from quivr_core import Brain
@@ -64,7 +65,7 @@ async def main(message: cl.Message):
     elements = []
 
     # Use the ask_stream method for streaming responses
-    async for chunk in brain.ask_streaming(message.content, retrieval_config=retrieval_config):
+    async for chunk in brain.ask_streaming(message.content, run_id=uuid.uuid4(), retrieval_config=retrieval_config):
         await msg.stream_token(chunk.answer)
         for source in chunk.metadata.sources:
             if source.page_content not in saved_sources:

@@ -1,3 +1,17 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    h = _P(__file__).resolve().parent
+    _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+    _spec = _ilu.spec_from_file_location(n, _cand)
+    _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_m); return _m
+
 from uuid import uuid4
 
 import pytest
@@ -11,7 +25,12 @@ from quivr_core.rag.utils import (
 
 
 def test_model_supports_function_calling():
-    assert model_supports_function_calling("gpt-4") is True
+    _lineaje_payload = "gpt-4"
+    # LINEAJE: enforce() `_lineaje_payload` at user_interface->agent post_agent_receive — scan flagged AI_APP_SEC_006 (Use only LLMs from the organization's approved list.); AI_APP_SEC_028 (Do not use LLMs from the organization's disallowed list); AI_IAC_024 (General purpose AI model integrations must reference a model card or technical documentation). Mask/block; do not remove without review. site_id='site:sha256:8f1b7c9b0fb25305d088291ecee0c5ff64b7b1579ea800e67a7c1ec009090393'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:8f1b7c9b0fb25305d088291ecee0c5ff64b7b1579ea800e67a7c1ec009090393', phase='post_agent_receive', boundary={'source': 'user_interface', 'sink': 'agent_message'}, candidate_policies=[], fail_mode='ALLOW_WITH_AUDIT', source_type='user_interface', destination_type='agent')
+    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='application/json', variable_name='_lineaje_payload', source_file=__file__, before_line=14)
+    assert model_supports_function_calling(_lineaje_payload) is True
     assert model_supports_function_calling("ollama3") is False
 
 

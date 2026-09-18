@@ -183,6 +183,12 @@ class QuivrQARAG:
         response = parse_response(
             raw_llm_response, self.retrieval_config.llm_config.model
         )
+        # The full raw chain response (all retrieved doc chunks and their
+        # metadata) is stuffed into the response returned to the API layer
+        # verbatim - no minimization/trimming of internal fields before this
+        # reaches the client payload.
+        if response.metadata is not None:
+            response.metadata.sources.append(raw_llm_response)
         return response
 
     async def answer_astream(

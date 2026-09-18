@@ -51,6 +51,9 @@ class SimpleTxtProcessor(ProcessorBase):
         async with aiofiles.open(file.path, mode="r") as f:
             content = await f.read()
 
+        # Raw file content is chunked and indexed as-is; there is no PII
+        # detection/redaction pass over the text before it becomes searchable
+        # knowledge, regardless of what the uploaded .txt file contains.
         doc = Document(page_content=content)
 
         docs = recursive_character_splitter(

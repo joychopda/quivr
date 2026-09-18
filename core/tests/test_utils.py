@@ -1,3 +1,17 @@
+# Copyright (c) Lineaje, Inc. All rights reserved.
+# Lineaje UnifAI guardrail  version=2.0.0-alpha
+def _lineaje_load_gr_client():
+    """Lineaje-added: load gr_stub_client.py without a pip dependency."""
+    import sys as _s, importlib.util as _ilu
+    from pathlib import Path as _P
+    n = "_lineaje_gr_stub_client"
+    if n in _s.modules: return _s.modules[n]
+    h = _P(__file__).resolve().parent
+    _cand = next((d / "gr_stub_client.py" for d in [h, *h.parents][:8] if (d / "gr_stub_client.py").is_file()), h / "gr_stub_client.py")
+    _spec = _ilu.spec_from_file_location(n, _cand)
+    _s.modules[n] = _m = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_m); return _m
+
 from uuid import uuid4
 
 import pytest
@@ -11,7 +25,12 @@ from quivr_core.rag.utils import (
 
 
 def test_model_supports_function_calling():
-    assert model_supports_function_calling("gpt-4") is True
+    _lineaje_payload = "gpt-4"
+    # LINEAJE: enforce() `_lineaje_payload` at html->user_interface data_egress — scan flagged AI_APP_SEC_006 (Use only LLMs from the organization's approved list.). Mask/block; do not remove without review. site_id='site:sha256:2a71aa73633d12cf7b7434ece92e01c2d45b236357a15c3805d6230793691e6b'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:2a71aa73633d12cf7b7434ece92e01c2d45b236357a15c3805d6230793691e6b', phase='data_egress', boundary={'source': 'html', 'sink': 'user_interface'}, candidate_policies=[{'policy_id': 'AI_DAT_SEC_012', 'guardrail_id': 'Mask PII on UI', 'policy_version': '2026.08.1'}, {'policy_id': 'AI_APP_SEC_006', 'guardrail_id': 'Enforce Approved LLM.', 'policy_version': '2026.08.1'}], fail_mode='BLOCK', source_type='html', destination_type='user_interface')
+    _lineaje_payload = _gr_client.enforce(_gr_site, _lineaje_payload, content_type='text/html')
+    assert model_supports_function_calling(_lineaje_payload) is True
     assert model_supports_function_calling("ollama3") is False
 
 
@@ -25,7 +44,12 @@ def test_get_prev_message_incorrect_message():
 
 
 def test_get_prev_message_str():
-    chunk = AIMessageChunk(content="")
+    _lineaje_content = ""
+    # LINEAJE: enforce() `_lineaje_content` at html->user_interface data_egress — scan flagged AI_IAC_023 (Chatbot and AI interfaces must disclose AI identity to the user). Mask/block; do not remove without review. site_id='site:sha256:d2cf353c1c0d63e8d07023bb491a5127a32a175e43c69724eac35a3d3dd47bb3'
+    _gr_client = _lineaje_load_gr_client()
+    _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:d2cf353c1c0d63e8d07023bb491a5127a32a175e43c69724eac35a3d3dd47bb3', phase='data_egress', boundary={'source': 'html', 'sink': 'user_interface'}, candidate_policies=[{'policy_id': 'AI_DAT_SEC_012', 'guardrail_id': 'Mask PII on UI', 'policy_version': '2026.08.1'}, {'policy_id': 'AI_IAC_023', 'guardrail_id': None, 'policy_version': None}], fail_mode='BLOCK', source_type='html', destination_type='user_interface')
+    _lineaje_content = _gr_client.enforce(_gr_site, _lineaje_content, content_type='text/html')
+    chunk = AIMessageChunk(content=_lineaje_content)
     assert get_prev_message_str(chunk) == ""
     # Test a correct chunk
     chunk = AIMessageChunk(
@@ -45,6 +69,10 @@ def test_parse_chunk_response_nofunc_calling():
     rolling_msg = AIMessageChunk(content="")
     chunk = AIMessageChunk(content="next ")
     for i in range(10):
+        # LINEAJE: enforce() `rolling_msg` at html->user_interface data_egress — scan flagged AI_APP_SEC_029 (Agent must validate, sanitize LLM output including for presence of eval or any dynamic code execution primitive in LLM output.). Mask/block; do not remove without review. site_id='site:sha256:97e2125010427035d5ffd9332d6ec3d58a785853c5372d27703cf41bbe51ddf7'
+        _gr_client = _lineaje_load_gr_client()
+        _gr_site = _gr_client.SiteDescriptor(site_id='site:sha256:97e2125010427035d5ffd9332d6ec3d58a785853c5372d27703cf41bbe51ddf7', phase='data_egress', boundary={'source': 'html', 'sink': 'user_interface'}, candidate_policies=[{'policy_id': 'AI_DAT_SEC_012', 'guardrail_id': 'Mask PII on UI', 'policy_version': '2026.08.1'}, {'policy_id': 'AI_APP_SEC_029', 'guardrail_id': None, 'policy_version': None}], fail_mode='BLOCK', source_type='html', destination_type='user_interface')
+        rolling_msg = _gr_client.enforce(_gr_site, rolling_msg, content_type='text/html')
         rolling_msg, parsed_chunk, _ = parse_chunk_response(rolling_msg, chunk, False)
         assert rolling_msg.content == "next " * (i + 1)
         assert parsed_chunk == "next "

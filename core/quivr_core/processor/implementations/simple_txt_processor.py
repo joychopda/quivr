@@ -54,6 +54,7 @@ class SimpleTxtProcessor(ProcessorBase):
         # Raw file content is chunked and indexed as-is; there is no PII
         # detection/redaction pass over the text before it becomes searchable
         # knowledge, regardless of what the uploaded .txt file contains.
+        # Policy Id: AI_DAT_SEC_023
         doc = Document(page_content=content)
 
         docs = recursive_character_splitter(

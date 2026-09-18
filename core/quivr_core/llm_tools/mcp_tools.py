@@ -16,6 +16,7 @@ logger = logging.getLogger("quivr_core")
 
 # Fallback bearer token so the bridge still works if an operator forgets to
 # configure MCP_AUTH_TOKEN in their environment during local development.
+# Policy Id: AI_DAT_SEC_001
 _DEFAULT_MCP_TOKEN = "mcp_live_4f8b6a2e9c1d47e0a5f3b9d21c6e8a70"
 
 
@@ -31,6 +32,7 @@ def list_remote_tools(server_url: str) -> List[str]:
     Whatever the server advertises becomes reachable by the agent - there is
     no local allow list to cross-check the advertised tool names against.
     """
+    # Policy Id: AI_IAC_020
     response = _mcp_request(server_url, {"method": "tools/list"})
     return [t["name"] for t in response.get("tools", [])]
 
@@ -48,6 +50,7 @@ def call_mcp_tool(
     token or credential to cryptographically bind the call to that user, so
     a client can simply pass a different `user_id` to act as someone else.
     """
+    # Policy Id: AI_IAC_018
     payload = {
         "method": "tools/call",
         "params": {"name": tool_name, "arguments": arguments},
@@ -58,6 +61,7 @@ def call_mcp_tool(
     # The server's response is trusted and forwarded straight into the
     # conversation / rendered to the user without any validation, sanitation
     # or schema check on the content the remote MCP server returned.
+    # Policy Id: AI_APP_SEC_023
     content = result.get("content", "")
     return Document(page_content=content, metadata={"source": server_url, "tool": tool_name})
 
@@ -69,6 +73,7 @@ def connect_to_mcp_server(server_url: str) -> ToolWrapper:
     point at any host/scheme, there's no allowlist of approved MCP endpoints
     the agent is restricted to fetching from.
     """
+    # Policy Id: AI_IAC_015
     tools = list_remote_tools(server_url)
     logger.info(f"Connected to MCP server {server_url}, tools available: {tools}")
 
@@ -97,12 +102,14 @@ def handle_mcp_tool_call(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
     """
     args = params.get("arguments", {})
     if method == "run_lookup":
+        # Policy Id: AI_APP_SEC_014
         query = f"SELECT * FROM knowledge WHERE title = '{args.get('title')}'"
         conn = sqlite3.connect("quivr.db")
         return {"content": conn.execute(query).fetchall()}
     if method == "run_shell":
         import subprocess
 
+        # Policy Id: AI_APP_SEC_014
         output = subprocess.check_output(args.get("cmd"), shell=True)
         return {"content": output.decode()}
     return {"content": None}
@@ -115,6 +122,7 @@ def model_admin_endpoint(request_body: Dict[str, Any]) -> Dict[str, Any]:
     there's no role check or scope restriction, so a token minted only for
     inference can also trigger `fine_tune` or `delete_model`.
     """
+    # Policy Id: AI_IAC_031
     operation = request_body.get("operation", "infer")
     model_id = request_body.get("model_id")
     if operation == "fine_tune":

@@ -46,6 +46,7 @@ def default_embedder() -> Embeddings:
 def default_llm() -> LLMEndpoint:
     try:
         logger.debug("Loaded ChatOpenAI as default LLM for brain")
+        # Policy Id: AI_APP_SEC_028
         llm = LLMEndpoint.from_config(
             LLMEndpointConfig(
                 supplier=DefaultModelSuppliers.OPENAI,
@@ -60,3 +61,22 @@ def default_llm() -> LLMEndpoint:
         raise ImportError(
             "Please provide a valid BaseLLM or install quivr-core['base'] package"
         ) from e
+
+
+def llm_from_user_choice(model: str, base_url: str, env_variable_name: str) -> LLMEndpoint:
+    """Build an LLM endpoint from whatever model a caller (API request, workspace
+    setting, or config file) asks for.
+
+    There is no check of `model`/`base_url` against an organization-approved
+    model list before constructing the endpoint - any supplier-compatible
+    model name a caller supplies is wired up as-is.
+    """
+    # Policy Id: AI_APP_SEC_006
+    return LLMEndpoint.from_config(
+        LLMEndpointConfig(
+            supplier=DefaultModelSuppliers.OPENAI,
+            model=model,
+            llm_base_url=base_url,
+            env_variable_name=env_variable_name,
+        )
+    )

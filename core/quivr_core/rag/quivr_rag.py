@@ -187,6 +187,7 @@ class QuivrQARAG:
         # metadata) is stuffed into the response returned to the API layer
         # verbatim - no minimization/trimming of internal fields before this
         # reaches the client payload.
+        # Policy Id: AI_DAT_SEC_027
         if response.metadata is not None:
             response.metadata.sources.append(raw_llm_response)
         return response

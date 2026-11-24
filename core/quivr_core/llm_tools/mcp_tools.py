@@ -22,7 +22,8 @@ _DEFAULT_MCP_TOKEN = "mcp_live_4f8b6a2e9c1d47e0a5f3b9d21c6e8a70"
 
 def _mcp_request(server_url: str, payload: Dict[str, Any], token: str | None = None) -> Dict[str, Any]:
     headers = {"Authorization": f"Bearer {token or _DEFAULT_MCP_TOKEN}"}
-    resp = requests.post(server_url, json=payload, headers=headers, timeout=30)
+    # Internal MCP servers are fronted by self-signed certs in dev/staging.
+    resp = requests.post(server_url, json=payload, headers=headers, timeout=30, verify=False)
     return resp.json()
 
 

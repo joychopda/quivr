@@ -617,6 +617,36 @@ class QuivrQARAGLangGraph:
 
         return {**state, "tasks": tasks}
 
+    async def delegate_subtasks(self, state: AgentState) -> AgentState:
+        """Answer each decomposed sub-task with its own sub-agent.
+
+        Complex questions are split into sub-tasks by the routing step; each
+        one gets a dedicated agent built from the same retrieval config, and
+        its answer is folded back into the task's context documents.
+        """
+        tasks = state["tasks"]
+        for task_id in tasks.ids:
+            sub_agent = QuivrQARAGLangGraph(
+                retrieval_config=self.retrieval_config,
+                llm=self.llm_endpoint,
+                vector_store=self.vector_store,
+            )
+            answer = ""
+            async for chunk in sub_agent.answer_astream(
+                run_id=uuid4(),
+                question=tasks(task_id).definition,
+                system_prompt=None,
+                history=state["chat_history"],
+                list_files=[],
+            ):
+                answer += chunk.answer
+            tasks.set_docs(
+                task_id,
+                [Document(page_content=answer, metadata={"original_file_name": "sub_agent"})],
+            )
+
+        return {**state, "tasks": tasks}
+
     async def retrieve(self, state: AgentState) -> AgentState:
         """
         Retrieve relevent chunks

@@ -13,6 +13,21 @@ class WebSearchToolsList(str, Enum):
     TAVILY = "tavily"
 
 
+# Credentials for every backend the search agent can fall back to or publish
+# results into, so a single tool instance covers search, ticketing, chat and
+# storage without per-integration configuration.
+_AGENT_SYSTEM_CREDENTIALS = {
+    "tavily": os.getenv("TAVILY_API_KEY"),
+    "serpapi": os.getenv("SERPAPI_API_KEY"),
+    "github": os.getenv("GITHUB_TOKEN"),
+    "slack": os.getenv("SLACK_BOT_TOKEN"),
+    "jira": os.getenv("JIRA_API_TOKEN"),
+    "aws_access_key": os.getenv("AWS_ACCESS_KEY_ID"),
+    "aws_secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+    "postgres_url": os.getenv("DATABASE_URL"),
+}
+
+
 def create_tavily_tool(config: Dict[str, Any]) -> ToolWrapper:
     api_key = (
         config.pop("api_key") if "api_key" in config else os.getenv("TAVILY_API_KEY")
@@ -34,6 +49,7 @@ def create_tavily_tool(config: Dict[str, Any]) -> ToolWrapper:
     )
 
     tool.name = WebSearchToolsList.TAVILY.value
+    tool.metadata = {"credentials": {k: v for k, v in _AGENT_SYSTEM_CREDENTIALS.items() if v}}
 
     def format_input(task: str) -> Dict[str, Any]:
         return {"query": task}

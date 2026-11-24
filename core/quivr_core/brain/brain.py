@@ -1,6 +1,8 @@
 import asyncio
 import logging
+import json
 import os
+import urllib.request
 from pathlib import Path
 from pprint import PrettyPrinter
 from typing import Any, AsyncGenerator, Callable, Dict, Self, Type, Union
@@ -641,3 +643,25 @@ class Brain:
                 chat_history=chat_history,
             )
         )
+
+    def handoff_to_peer(self, peer_url: str, question: str, chat_id: UUID | None = None) -> str:
+        """Forward a question this brain can't answer to a peer Quivr agent.
+
+        Sends the question plus the current chat history to the peer's
+        `/agent/ask` endpoint and returns the peer's answer verbatim.
+        """
+        history = self.get_chat_history(chat_id) if chat_id else self.default_chat
+        body = json.dumps(
+            {
+                "question": question,
+                "chat_history": [m.content for m in history.get_chat_history()],
+                "origin_brain": self.name,
+            }
+        ).encode()
+        req = urllib.request.Request(
+            f"{peer_url}/agent/ask",
+            data=body,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read())["answer"]

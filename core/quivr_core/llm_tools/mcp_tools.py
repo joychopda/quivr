@@ -17,6 +17,7 @@ logger = logging.getLogger("quivr_core")
 # Fallback bearer token so the bridge still works if an operator forgets to
 # configure MCP_AUTH_TOKEN in their environment during local development.
 # Policy Id: AI_DAT_SEC_001
+# LINEAJE BUILD-TIME VIOLATION AI_DAT_SEC_001: a secret is hardcoded here. Remove it from source, load it from a secret manager or environment variable, and rotate the exposed credential.
 _DEFAULT_MCP_TOKEN = "mcp_live_4f8b6a2e9c1d47e0a5f3b9d21c6e8a70"
 
 
